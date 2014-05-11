@@ -1,24 +1,14 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Common.Net;
-using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Providers;
-using MediaBrowser.Model.Logging;
 
 namespace MediaBrowser.Plugins.Anime.Providers.AniDB
 {
     public class SeriesIndexProvider : ICustomMetadataProvider<Series>, IPreRefreshProvider
     {
-        private readonly SeriesIndexSearch _indexSearcher;
-
-        public SeriesIndexProvider(IServerConfigurationManager configurationManager, IHttpClient httpClient)
-        {
-            _indexSearcher = new SeriesIndexSearch(configurationManager, httpClient);
-        }
 
         public async Task<ItemUpdateType> FetchAsync(Series item, IDirectoryService directoryService, CancellationToken cancellationToken)
         {
@@ -28,7 +18,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
 
             if (!string.IsNullOrEmpty(aid))
             {
-                item.AnimeSeriesIndex = await _indexSearcher.FindSeriesIndex(aid, cancellationToken);
+                item.AnimeSeriesIndex = 1;
                 return ItemUpdateType.MetadataDownload;
             }
 

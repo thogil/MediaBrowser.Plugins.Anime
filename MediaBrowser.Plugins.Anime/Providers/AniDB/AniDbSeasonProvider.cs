@@ -8,6 +8,7 @@ using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Providers;
 
@@ -15,13 +16,15 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
 {
     public class AniDbSeasonProvider : IRemoteMetadataProvider<Season, SeasonInfo>
     {
-        private readonly SeriesIndexSearch _indexSearcher;
+        private readonly SeriesAnidbIndexSearch _anidbIndexSearcher;
         private readonly AniDbSeriesProvider _seriesProvider;
 
-        public AniDbSeasonProvider(IServerConfigurationManager configurationManager, IHttpClient httpClient, IApplicationPaths appPaths)
+        public AniDbSeasonProvider(IServerConfigurationManager configurationManager, IHttpClient httpClient, IApplicationPaths appPaths, ILogger logger)
         {
-            _indexSearcher = new SeriesIndexSearch(configurationManager, httpClient);
-            _seriesProvider = new AniDbSeriesProvider(appPaths, httpClient, configurationManager);
+            var downloader = new AniDbIdMapperDownloader(logger, appPaths);
+
+            _anidbIndexSearcher = new SeriesAnidbIndexSearch(configurationManager, httpClient, downloader);
+            _seriesProvider = new AniDbSeriesProvider(appPaths, httpClient);
         }
 
         public async Task<MetadataResult<Season>> GetMetadata(SeasonInfo info, CancellationToken cancellationToken)
@@ -33,12 +36,12 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                     IndexNumber = info.IndexNumber
                 }
             };
-            
-            string seriesId = info.SeriesProviderIds.GetOrDefault(ProviderNames.AniDb);
-            if (seriesId == null)
+
+            string anidbId = info.SeriesProviderIds.GetOrDefault(ProviderNames.AniDb);
+            if (anidbId == null)
                 return result;
 
-            string seasonid = await _indexSearcher.FindSeriesByRelativeIndex(seriesId, (info.IndexNumber ?? 1) - 1, cancellationToken).ConfigureAwait(false);
+            string seasonid = await _anidbIndexSearcher.FindSeriesByRelativeIndex(anidbId, info.IndexNumber ?? 1, cancellationToken).ConfigureAwait(false);
             if (seasonid == null)
                 return result;
 

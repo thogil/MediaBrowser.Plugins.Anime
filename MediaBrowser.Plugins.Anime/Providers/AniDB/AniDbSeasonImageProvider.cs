@@ -6,6 +6,7 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
+using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Providers;
 using System.Collections.Generic;
 using System.Threading;
@@ -18,15 +19,16 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
     /// </summary>
     public class AniDbSeasonImageProvider : IRemoteImageProvider
     {
-        private readonly SeriesIndexSearch _indexSearcher;
+        private readonly SeriesAnidbIndexSearch _anidbIndexSearcher;
         private readonly IHttpClient _httpClient;
         private readonly IApplicationPaths _appPaths;
 
-        public AniDbSeasonImageProvider(IServerConfigurationManager configurationManager,  IApplicationPaths appPaths, IHttpClient httpClient)
+        public AniDbSeasonImageProvider(IServerConfigurationManager configurationManager,  IApplicationPaths appPaths, IHttpClient httpClient, ILogger logger)
         {
             _appPaths = appPaths;
             _httpClient = httpClient;
-            _indexSearcher = new SeriesIndexSearch(configurationManager, httpClient);
+            var downloader = new AniDbIdMapperDownloader(logger, appPaths);
+            _anidbIndexSearcher = new SeriesAnidbIndexSearch(configurationManager, httpClient, downloader);
         }
 
         public Task<HttpResponseInfo> GetImageResponse(string url, CancellationToken cancellationToken)
@@ -43,7 +45,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
             if (string.IsNullOrEmpty(seriesId))
                 return Enumerable.Empty<RemoteImageInfo>();
 
-            string seasonid = await _indexSearcher.FindSeriesByRelativeIndex(seriesId, (season.IndexNumber ?? 1) - 1, cancellationToken).ConfigureAwait(false);
+            string seasonid = await _anidbIndexSearcher.FindSeriesByRelativeIndex(seriesId, season.IndexNumber ?? 1, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrEmpty(seasonid))
                 return Enumerable.Empty<RemoteImageInfo>();
 

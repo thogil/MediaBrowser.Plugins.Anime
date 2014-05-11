@@ -1,17 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using MediaBrowser.Controller;
 using MediaBrowser.Controller.Entities.TV;
-using MediaBrowser.Controller.Providers;
-using MediaBrowser.Model.Logging;
-using MediaBrowser.Plugins.Anime.Configuration;
-using MediaBrowser.Plugins.Anime.Providers;
 using MediaBrowser.Plugins.Anime.Providers.AniList;
-using Moq;
 using NUnit.Framework;
 
 namespace MediaBrowser.Plugins.Anime.Tests
@@ -20,7 +11,7 @@ namespace MediaBrowser.Plugins.Anime.Tests
     public class AniListSeriesProviderTests
     {
         [Test]
-        public async Task TestScrapePage()
+        public void TestScrapePage()
         {
             var data = File.ReadAllText("TestData/anilist/9756.html", Encoding.UTF8);
 

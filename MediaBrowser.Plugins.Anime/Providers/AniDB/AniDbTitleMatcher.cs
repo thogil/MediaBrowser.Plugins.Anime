@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using System.Xml.Linq;
 using MediaBrowser.Model.Logging;
 
 namespace MediaBrowser.Plugins.Anime.Providers.AniDB
@@ -27,12 +28,13 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         private readonly AsyncLock _lock;
 
         private Dictionary<string, string> _titles;
-        
+
         /// <summary>
         /// Creates a new instance of the AniDbTitleMatcher class.
         /// </summary>
         /// <param name="logger">The logger.</param>
         /// <param name="downloader">The AniDB title downloader.</param>
+        /// <param name="aniDbIdMapperDownloader">The AniDB mapper downloader.</param>
         public AniDbTitleMatcher(ILogger logger, IAniDbTitleDownloader downloader)
         {
             _logger = logger;
@@ -142,7 +144,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                 _logger.ErrorException("Failed to load AniDB titles", e);
             }
         }
-        
+
         private Task ReadTitlesFile()
         {
             return Task.Run(() =>
@@ -189,7 +191,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                 var comparable = (from pair in _titles
                                   let comp = GetComparableName(pair.Key)
                                   where !_titles.ContainsKey(comp)
-                                  select new {Title = comp, Id = pair.Value})
+                                  select new { Title = comp, Id = pair.Value })
                                  .ToArray();
 
                 foreach (var pair in comparable)
@@ -198,5 +200,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                 }
             });
         }
+
+        
     }
 }

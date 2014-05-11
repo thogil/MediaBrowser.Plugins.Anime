@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -14,12 +13,10 @@ using System.Xml.Linq;
 using System.Xml.Serialization;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
-using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
-using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Providers;
 using MediaBrowser.Plugins.Anime.Configuration;
 
@@ -39,7 +36,6 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         private static readonly Regex AniDbUrlRegex = new Regex(@"http://anidb.net/\w+ \[(?<name>[^\]]*)\]");
         private readonly IApplicationPaths _appPaths;
         private readonly IHttpClient _httpClient;
-        private readonly SeriesIndexSearch _indexSearcher;
 
         private readonly Dictionary<string, string> _typeMappings = new Dictionary<string, string>
         {
@@ -48,12 +44,10 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
             {"Chief Animation Direction", "Chief Animation Director"}
         };
 
-        public AniDbSeriesProvider(IApplicationPaths appPaths, IHttpClient httpClient, IServerConfigurationManager configurationManager)
+        public AniDbSeriesProvider(IApplicationPaths appPaths, IHttpClient httpClient)
         {
             _appPaths = appPaths;
             _httpClient = httpClient;
-            _indexSearcher = new SeriesIndexSearch(configurationManager, httpClient);
-
             TitleMatcher = AniDbTitleMatcher.DefaultInstance;
         }
 
@@ -71,9 +65,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
             {
                 result.Item = new Series();
                 result.HasMetadata = true;
-
                 result.Item.ProviderIds.Add(ProviderNames.AniDb, aid);
-                result.Item.ProviderIds.Add(ProviderNames.AniDbOriginalSeries, await _indexSearcher.FindOriginalSeriesId(aid, cancellationToken));
 
                 string seriesDataPath = await GetSeriesData(_appPaths, _httpClient, aid, cancellationToken);
                 FetchSeriesInfo(result.Item, seriesDataPath, info.MetadataLanguage ?? "en");

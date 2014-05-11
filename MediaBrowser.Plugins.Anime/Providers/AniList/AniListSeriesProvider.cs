@@ -108,7 +108,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
         {
             _downloader = new AniListSeriesDownloader(appPaths, logManager.GetLogger("AniList"));
             _logger = logManager.GetLogger("AniList");
-            _anidbSeriesProvider = new AniDbSeriesProvider(appPaths, httpClient, configurationManger);
+            _anidbSeriesProvider = new AniDbSeriesProvider(appPaths, httpClient);
         }
 
         public async Task<MetadataResult<Series>> GetMetadata(SeriesInfo info, CancellationToken cancellationToken)

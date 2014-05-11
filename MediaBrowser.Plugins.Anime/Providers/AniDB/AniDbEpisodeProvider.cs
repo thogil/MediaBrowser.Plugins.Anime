@@ -7,10 +7,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Configuration;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
+using MediaBrowser.Model.Logging;
 using MediaBrowser.Model.Providers;
 using MediaBrowser.Plugins.Anime.Configuration;
 
@@ -23,18 +25,20 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
     {
         private readonly IServerConfigurationManager _configurationManager;
         private readonly IHttpClient _httpClient;
-        private readonly SeriesIndexSearch _indexSearch;
+        private readonly SeriesAnidbIndexSearch _anidbIndexSearch;
 
         /// <summary>
         ///     Creates a new instance of the <see cref="AniDbEpisodeProvider" /> class.
         /// </summary>
         /// <param name="configurationManager">The configuration manager.</param>
         /// <param name="httpClient">The HTTP client.</param>
-        public AniDbEpisodeProvider(IServerConfigurationManager configurationManager, IHttpClient httpClient)
+        public AniDbEpisodeProvider(IServerConfigurationManager configurationManager, IHttpClient httpClient, ILogger logger, IApplicationPaths appPaths)
         {
             _configurationManager = configurationManager;
             _httpClient = httpClient;
-            _indexSearch = new SeriesIndexSearch(configurationManager, httpClient);
+            var downloader = new AniDbIdMapperDownloader(logger, appPaths);
+
+            _anidbIndexSearch = new SeriesAnidbIndexSearch(configurationManager, httpClient,downloader);
         }
 
         public async Task<MetadataResult<Episode>> GetMetadata(EpisodeInfo info, CancellationToken cancellationToken)
@@ -146,7 +150,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         {
             if (season != 1)
             {
-                string id = await _indexSearch.FindSeriesByRelativeIndex(seriesId, season - 1, cancellationToken).ConfigureAwait(false);
+                string id = await _anidbIndexSearch.FindSeriesByRelativeIndex(seriesId, season - 1, cancellationToken).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(id))
                     return null;
 

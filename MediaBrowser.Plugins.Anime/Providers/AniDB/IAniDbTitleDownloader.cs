@@ -20,4 +20,19 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         /// <returns>The path to the titles.xml file.</returns>
         string TitlesFilePath { get; }
     }
+
+    public interface IAniDbIdMapperDownloader
+    {
+        /// <summary>
+        /// Downloads titles and stores them in an XML file at TitlesFilePath.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        Task Load(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Gets the path to the titles.xml file.
+        /// </summary>
+        /// <returns>The path to the titles.xml file.</returns>
+        string AniDbIdMapperFilePath { get; }
+    }
 }
