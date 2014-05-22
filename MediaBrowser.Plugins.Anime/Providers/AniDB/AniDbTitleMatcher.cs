@@ -26,7 +26,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         private readonly IAniDbTitleDownloader _downloader;
         private readonly AsyncLock _lock;
 
-        private Dictionary<string, string> _titles;
+        private Dictionary<string, List<string>> _titles;
         
         /// <summary>
         /// Creates a new instance of the AniDbTitleMatcher class.
@@ -55,19 +55,28 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                 }
             }
 
-            string aid;
-            if (_titles.TryGetValue(title, out aid))
+            var animeTitle = _titles.SingleOrDefault(t => t.Value.First() == title);
+
+            if (animeTitle.Key != null)
             {
-                return aid;
-            }
-            
-            title = GetComparableName(title);
-            if (_titles.TryGetValue(title, out aid))
-            {
-                return aid;
+                return animeTitle.Key;
             }
 
-            return null;
+            return _titles.FirstOrDefault(t => t.Value.Any(alt => alt == title) || t.Value.Any(alt=>alt.Contains(title))).Key;
+
+            //string aid;
+            //if (_titles.TryGetValue(title, out aid))
+            //{
+            //    return aid;
+            //}
+            
+            //title = GetComparableName(title);
+            //if (_titles.TryGetValue(title, out aid))
+            //{
+            //    return aid;
+            //}
+
+            //return null;
         }
 
         const string Remove = "\"'!`?";
@@ -125,7 +134,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         {
             if (_titles == null)
             {
-                _titles = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                _titles = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             }
             else
             {
@@ -178,7 +187,12 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                                     var title = reader.ReadElementContentAsString();
                                     if (!string.IsNullOrEmpty(aid) && !string.IsNullOrEmpty(title))
                                     {
-                                        _titles[title] = aid;
+                                        if (!_titles.ContainsKey(aid))
+                                            _titles[aid] = new List<string>();
+                                        if (reader.GetAttribute("type") == "main")
+                                            _titles[aid] = (new[] {title}).Concat(_titles[aid]).ToList();
+                                        else
+                                            _titles[aid].Add(title);
                                     }
                                     break;
                             }
