@@ -26,7 +26,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
 
         private struct TitleInfo
         {
-            public string AniDbId { get; set; }
+            public string Title { get; set; }
             public TitleType Type { get; set; }
         }
 
@@ -74,12 +74,12 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
 
         private string LookupAniDbId(string title)
         {
-            IList<TitleInfo> info;
-            if (_titles.TryGetValue(title, out info)) {
-                return info.OrderBy(i => (int) i.Type).Select(i => i.AniDbId).FirstOrDefault();
-            }
+            var perfectTitle = _titles.SingleOrDefault(kvp => kvp.Value.Single(t => t.Type == TitleType.Main).Title == title).Key;
 
-            return null;
+            if (perfectTitle != null)
+                return perfectTitle;
+
+            return _titles.FirstOrDefault(kvp => kvp.Value.Any(t => t.Title == title) || kvp.Value.Any(t => t.Title.Contains(title))).Key;
         }
 
         const string Remove = "\"'!`?";
@@ -137,7 +137,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         {
             if (_titles == null)
             {
-                _titles = new Dictionary<string, IList<TitleInfo>>(StringComparer.OrdinalIgnoreCase);
+                _titles = new Dictionary<string, IList<TitleInfo>>((int) StringComparison.OrdinalIgnoreCase);
             }
             else
             {
@@ -187,35 +187,20 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
                                     aid = reader.Value;
                                     break;
                                 case "title":
+                                    var type = ParseType(reader.GetAttribute("type"));
                                     var title = reader.ReadElementContentAsString();
                                     if (!string.IsNullOrEmpty(aid) && !string.IsNullOrEmpty(title)) {
-                                        var type = ParseType(reader.GetAttribute("type"));
-
-                                        IList<TitleInfo> items;
-                                        if (!_titles.TryGetValue(title, out items)) {
-                                            items = new List<TitleInfo>();
-                                            _titles[title] = items;
+                                        if (!_titles.ContainsKey(aid)) {
+                                            _titles.Add(aid,new List<TitleInfo>());                                            
                                         }
-
-                                        items.Add(new TitleInfo {AniDbId = aid, Type = type});
+                                        _titles[aid].Add(new TitleInfo { Title = title, Type = type });
                                     }
                                     break;
                             }
                         }
                     }
                 }
-
-                var comparable = (from pair in _titles
-                                  let comp = GetComparableName(pair.Key)
-                                  where !_titles.ContainsKey(comp)
-                                  select new {Title = comp, Id = pair.Value})
-                                 .ToArray();
-
-                foreach (var pair in comparable)
-                {
-                    _titles[pair.Title] = pair.Id;
-                }
-            });
+        });
         }
 
         private TitleType ParseType(string type)
