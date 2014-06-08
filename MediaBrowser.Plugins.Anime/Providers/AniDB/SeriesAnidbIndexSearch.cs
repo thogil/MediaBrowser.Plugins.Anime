@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Configuration;
@@ -21,9 +22,22 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         }
         
         public async Task<string> FindSeriesByRelativeIndex(string anidbId, int seasonNumber, CancellationToken cancellationToken) {
-            await _downloader.Load(cancellationToken);
 
-            var mapper = GetMapper();
+            Dictionary<string, Dictionary<string, string>> mapper=null;
+            var retry = 0;
+            while (mapper == null && retry < 5) {
+                await _downloader.Load(cancellationToken);
+                try {
+                    mapper = GetMapper();    
+                }
+                catch (XmlException) {
+                    mapper = null;
+                    _downloader.Delete();
+                    retry++;
+                }
+            }
+            if (mapper == null)
+                return null;
             if (!mapper.Any(x => x.Value.ContainsValue(anidbId)))
                 return null;
             var tvdbId = mapper.First(x => x.Value.ContainsValue(anidbId)).Key;

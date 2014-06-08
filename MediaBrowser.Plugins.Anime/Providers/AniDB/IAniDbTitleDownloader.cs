@@ -29,6 +29,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB
         /// <param name="cancellationToken">The cancellation token.</param>
         Task Load(CancellationToken cancellationToken);
 
+        void Delete();
         /// <summary>
         /// Gets the path to the titles.xml file.
         /// </summary>

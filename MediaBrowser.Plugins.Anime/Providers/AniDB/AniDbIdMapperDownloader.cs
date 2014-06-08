@@ -49,6 +49,14 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB {
             }
         }
 
+        public void Delete()
+        {
+            var dbIdMapperFile = AniDbIdMapperFilePath;
+            if (File.Exists(dbIdMapperFile)) {
+                File.Delete(dbIdMapperFile);
+            }
+        }
+
         /// <summary>
         /// Downloads an xml file from AniDB which contains all of the titles for every anime, and their IDs,
         /// and saves it to disk.
