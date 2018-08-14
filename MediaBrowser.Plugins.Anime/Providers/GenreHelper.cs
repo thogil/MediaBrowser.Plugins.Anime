@@ -1,8 +1,8 @@
-﻿using System;
+﻿using MediaBrowser.Controller.Entities.TV;
+using MediaBrowser.Plugins.Anime.Configuration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using MediaBrowser.Controller.Entities.TV;
-using MediaBrowser.Plugins.Anime.Configuration;
 
 namespace MediaBrowser.Plugins.Anime.Providers
 {
@@ -49,19 +49,159 @@ namespace MediaBrowser.Plugins.Anime.Providers
             {"Vampire", "Supernatural"},
             {"Yaoi", "Adult"},
             {"Yuri", "Adult"},
-            {"Zombie", "Supernatural"}
+            {"Zombie", "Supernatural"},
+            //AniSearch Genre
+            {"Geister­geschichten", "Geister­geschichten"},
+            {"Romanze", "Romance"},
+            {"Alltagsdrama", "Slice of Life"},
+            {"Alltagsleben", "Slice of Life"},
+            {"Psychodrama", "Psycho"},
+            {"Actiondrama", "Action"},
+            {"Nonsense-Komödie", "Comedy"},
+            {"Magie", "Fantasy"},
+            {"Abenteuer", "Adventure"},
+            {"Komödie", "Comedy"},
+            {"Erotik", "Adult"},
+            {"Historisch", "Period & Historical"},
+            //Proxer
+            {"Slice_of_Life", "Slice of Life"},
         };
 
         private static readonly string[] GenresAsTags =
         {
             "Hentai",
             "Space",
-            "Vampire",
+            "Weltraum",
             "Yaoi",
             "Yuri",
-            "Zombie",
             "Demons",
-            "Witch"
+            "Witch",
+            //AniSearchTags
+            "Krieg",
+            "Militär",
+            "Satire",
+            "Übermäßige Gewaltdarstellung",
+            "Monster",
+            "Zeitgenössische Fantasy",
+            "Dialogwitz",
+            "Romantische Komödie",
+            "Slapstick",
+            "Alternative Welt",
+            "4-panel",
+            "CG-Anime",
+            "Episodisch",
+            "Moe",
+            "Parodie",
+            "Splatter",
+            "Tragödie",
+            "Verworrene Handlung",
+            //Themen
+            "Erwachsenwerden",
+            "Gender Bender",
+            "Ältere Frau, jüngerer Mann",
+            "Älterer Mann, jüngere Frau",
+            //Schule (School)
+            "Grundschule",
+            "Kindergarten",
+            "Klubs",
+            "Mittelschule",
+            "Oberschule",
+            "Schule",
+            "Universität",
+            //Zeit (Time)
+            "Altes Asien",
+            "Frühe Neuzeit",
+            "Gegenwart",
+            "industrialisierung",
+            "Meiji-Ära",
+            "Mittelalter",
+            "Weltkriege",
+            //Fantasy
+            "Dunkle Fantasy",
+            "Epische Fantasy",
+            "Zeitgenössische Fantasy",
+            //Ort
+            "Alternative Welt",
+            "In einem Raumschiff",
+            "Weltraum",
+            //Setting
+            "Cyberpunk",
+            "Endzeit",
+            "Space Opera",
+            //Hauptfigur
+            "Charakterschache Heldin",
+            "Charakterschacher Held",
+            "Charakterstarke Heldin",
+            "Charakterstarker Held",
+            "Gedächtnisverlust",
+            "Stoische Heldin",
+            "Stoischer Held",
+            "Widerwillige Heldin",
+            "Widerwilliger Held",
+            //Figuren
+            "Diva",
+            "Genie",
+            "Schul-Delinquent",
+            "Tomboy",
+            "Tsundere",
+            "Yandere",
+            //Kampf (fight)
+            "Bionische Kräfte",
+            "Martial Arts",
+            "PSI-Kräfte",
+            "Real Robots",
+            "Super Robots",
+            "Schusswaffen",
+            "Schwerter & co",
+            //Sports (Sport)
+            "Baseball",
+            "Boxen",
+            "Denk- und Glücksspiele",
+            "Football",
+            "Fußball",
+            "Kampfsport",
+            "Rennsport",
+            "Tennis",
+            //Kunst (Art)
+            "Anime & Film",
+            "Malerei",
+            "Manga & Doujinshi",
+            "Musik",
+            "Theater",
+            //Tätigkeit
+            "Band",
+            "Detektiv",
+            "Dieb",
+            "Essenszubereitung",
+            "Idol",
+            "Kopfgeldjäger",
+            "Ninja",
+            "Polizist",
+            "Ritter",
+            "Samurai",
+            "Solosänger",
+            //Wesen
+            "Außerirdische",
+            "Cyborgs",
+            "Dämonen",
+            "Elfen",
+            "Geister",
+            "Hexen",
+            "Himmlische Wesen",
+            "Kamis",
+            "Kemonomimi",
+            "Monster",
+            "Roboter & Androiden",
+            "Tiermenschen",
+            "Vampire",
+            "Youkai",
+            "Zombie",
+            //Proxer
+            "Virtual Reality",
+            "Game",
+            "Survival",
+            "Fanservice",
+            "Schlauer Protagonist",
         };
 
         private static readonly Dictionary<string, string> IgnoreIfPresent = new Dictionary<string, string>
@@ -71,13 +211,13 @@ namespace MediaBrowser.Plugins.Anime.Providers
 
         public static void CleanupGenres(Series series)
         {
-            PluginConfiguration config = PluginConfiguration.Instance();
+            PluginConfiguration config = Plugin.Instance.Configuration;
 
             if (config.TidyGenreList)
             {
                 series.Genres = RemoveRedundantGenres(series.Genres)
                                            .Distinct()
-                                           .ToList();
+                                           .ToArray();
 
                 TidyGenres(series);
             }
@@ -85,49 +225,29 @@ namespace MediaBrowser.Plugins.Anime.Providers
             var max = config.MaxGenres;
             if (config.AddAnimeGenre)
             {
-                series.Genres.Remove("Animation");
-                series.Genres.Remove("Anime");
+                series.Genres = series.Genres.Except(new[] { "Animation", "Anime" }).ToArray();
 
                 max = Math.Max(max - 1, 0);
             }
-            
+
             if (config.MaxGenres > 0)
             {
-                if (config.MoveExcessGenresToTags)
-                {
-                    foreach (string genre in series.Genres.Skip(max))
-                    {
-                        if (!series.Tags.Contains(genre))
-                            series.Tags.Add(genre);
-                    }
-                }
-
-                series.Genres = series.Genres.Take(max).ToList();
+                series.Genres = series.Genres.Take(max).ToArray();
             }
 
             if (!series.Genres.Contains("Anime") && config.AddAnimeGenre)
             {
-                if (series.Genres.Contains("Animation"))
-                    series.Genres.Remove("Animation");
+                series.Genres = series.Genres.Except(new[] { "Animation" }).ToArray();
 
                 series.AddGenre("Anime");
             }
 
-            series.Genres.Sort();
-        }
-
-        public static void RemoveDuplicateTags(Series series)
-        {
-            for (int i = series.Tags.Count - 1; i >= 0; i--)
-            {
-                if (series.Genres.Contains(series.Tags[i]))
-                    series.Tags.RemoveAt(i);
-            }
+            series.Genres = series.Genres.OrderBy(i => i).ToArray();
         }
 
         public static void TidyGenres(Series series)
         {
-            var config = PluginConfiguration.Instance != null ? PluginConfiguration.Instance() : new PluginConfiguration();
+            var config = Plugin.Instance.Configuration;
 
             var genres = new HashSet<string>();
             var tags = new HashSet<string>(series.Tags);
@@ -139,23 +259,17 @@ namespace MediaBrowser.Plugins.Anime.Providers
                     genres.Add(mapped);
                 else
                 {
-                    if (config.MoveExcessGenresToTags)
-                        tags.Add(genre);
-                    else
-                        genres.Add(genre);
+                    genres.Add(genre);
                 }
 
                 if (GenresAsTags.Contains(genre))
                 {
-                    if (config.MoveExcessGenresToTags)
-                        tags.Add(genre);
-                    else if (!genres.Contains(genre))
-                        genres.Add(genre);
+                    genres.Add(genre);
                 }
             }
 
-            series.Genres = genres.ToList();
-            series.Tags = tags.ToList();
+            series.Genres = genres.ToArray();
+            series.Tags = tags.ToArray();
         }
 
         public static IEnumerable<string> RemoveRedundantGenres(IEnumerable<string> genres)

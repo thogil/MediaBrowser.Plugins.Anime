@@ -11,26 +11,25 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using MediaBrowser.Plugins.Anime.Providers.AniList.MediaBrowser.Plugins.Anime.Providers.AniList;
-using MediaBrowser.Model.Serialization;
-//API v2
-namespace MediaBrowser.Plugins.Anime.Providers.AniList
+
+namespace MediaBrowser.Plugins.Anime.Providers.MyAnimeList
 {
-    public class AniListSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder
+    public class MyAnimeListSeriesProvider : IRemoteMetadataProvider<Series, SeriesInfo>, IHasOrder
     {
+        private readonly ILogger _log;
         private readonly IHttpClient _httpClient;
         private readonly IApplicationPaths _paths;
-        private readonly ILogger _log;
         private readonly Api _api;
-        public int Order => -2;
-        public string Name => "AniList";
         public static readonly SemaphoreSlim ResourcePool = new SemaphoreSlim(1, 1);
+        public static string provider_name = ProviderNames.MyAnimeList;
+        public int Order => -5;
+        public string Name => "MyAnimeList";
 
-        public AniListSeriesProvider(IApplicationPaths appPaths, IHttpClient httpClient, ILogManager logManager, IJsonSerializer jsonSerializer)
+        public MyAnimeListSeriesProvider(IApplicationPaths appPaths, IHttpClient httpClient, ILogManager logManager)
         {
-            _log = logManager.GetLogger("AniList");
+            _api = new Api(logManager);
+            _log = logManager.GetLogger("MyAnimeList");
             _httpClient = httpClient;
-            _api = new Api(jsonSerializer);
             _paths = appPaths;
         }
 
@@ -38,32 +37,36 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
         {
             var result = new MetadataResult<Series>();
 
-            var aid = info.ProviderIds.GetOrDefault(ProviderNames.AniList);
+            var aid = info.ProviderIds.GetOrDefault(provider_name);
             if (string.IsNullOrEmpty(aid))
             {
-                _log.Info("Start AniList... Searching(" + info.Name + ")");
+                _log.Info("Start MyAnimeList... Searching(" + info.Name + ")");
                 aid = await _api.FindSeries(info.Name, cancellationToken);
             }
 
             if (!string.IsNullOrEmpty(aid))
             {
-                RootObject  WebContent = await _api.WebRequestAPI(_api.AniList_anime_link.Replace("{0}",aid));
+                string WebContent = await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken);
                 result.Item = new Series();
                 result.HasMetadata = true;
-               
-                result.People = await _api.GetPersonInfo(WebContent.data.Media.id, cancellationToken);
-                result.Item.ProviderIds.Add(ProviderNames.AniList, aid);
-                result.Item.Overview = WebContent.data.Media.description;
+
+                result.Item.ProviderIds.Add(provider_name, aid);
+                result.Item.Overview = await _api.Get_OverviewAsync(WebContent);
+                result.ResultLanguage = "eng";
                 try
                 {
-                    //AniList has a max rating of 5
-                    result.Item.CommunityRating = (WebContent.data.Media.averageScore/10);
+                    result.Item.CommunityRating = float.Parse(await _api.Get_RatingAsync(WebContent), System.Globalization.CultureInfo.InvariantCulture);
                 }
                 catch (Exception) { }
-                foreach (var genre in _api.Get_Genre(WebContent))
-                    result.Item.AddGenre(genre);
+                foreach (var genre in await _api.Get_GenreAsync(WebContent))
+                {
+                    if (!string.IsNullOrEmpty(genre))
+                    {
+                        result.Item.AddGenre(genre);
+                    }
+                }
                 GenreHelper.CleanupGenres(result.Item);
-                StoreImageUrl(aid, WebContent.data.Media.coverImage.large, "image");
+                StoreImageUrl(aid, await _api.Get_ImageUrlAsync(WebContent), "image");
             }
             return result;
         }
@@ -72,19 +75,18 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
         {
             var results = new Dictionary<string, RemoteSearchResult>();
 
-            var aid = searchInfo.ProviderIds.GetOrDefault(ProviderNames.AniList);
+            var aid = searchInfo.ProviderIds.GetOrDefault(provider_name);
             if (!string.IsNullOrEmpty(aid))
             {
                 if (!results.ContainsKey(aid))
-                    results.Add(aid, await _api.GetAnime(aid));
+                    results.Add(aid, await _api.GetAnime(aid, cancellationToken));
             }
-
             if (!string.IsNullOrEmpty(searchInfo.Name))
             {
                 List<string> ids = await _api.Search_GetSeries_list(searchInfo.Name, cancellationToken);
                 foreach (string a in ids)
                 {
-                    results.Add(a, await _api.GetAnime(a));
+                    results.Add(a, await _api.GetAnime(a, cancellationToken));
                 }
             }
 
@@ -93,7 +95,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
 
         private void StoreImageUrl(string series, string url, string type)
         {
-            var path = Path.Combine(_paths.CachePath, "anilist", type, series + ".txt");
+            var path = Path.Combine(_paths.CachePath, "myanimelist", type, series + ".txt");
             var directory = Path.GetDirectoryName(path);
             Directory.CreateDirectory(directory);
 
@@ -111,19 +113,21 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
         }
     }
 
-    public class AniListSeriesImageProvider : IRemoteImageProvider
+    public class MyAnimeListSeriesImageProvider : IRemoteImageProvider
     {
         private readonly IHttpClient _httpClient;
         private readonly IApplicationPaths _appPaths;
         private readonly Api _api;
-        public AniListSeriesImageProvider(IHttpClient httpClient, IApplicationPaths appPaths, IJsonSerializer jsonSerializer)
+        public static readonly SemaphoreSlim ResourcePool = new SemaphoreSlim(1, 1);
+
+        public MyAnimeListSeriesImageProvider(IHttpClient httpClient, IApplicationPaths appPaths, ILogManager logManager)
         {
+            _api = new Api(logManager);
             _httpClient = httpClient;
             _appPaths = appPaths;
-            _api = new Api(jsonSerializer);
         }
 
-        public string Name => "AniList";
+        public string Name => "MyAnimeList";
 
         public bool Supports(BaseItem item) => item is Series || item is Season;
 
@@ -134,7 +138,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
 
         public Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
         {
-            var seriesId = item.GetProviderId(ProviderNames.AniList);
+            var seriesId = item.GetProviderId(MyAnimeListSeriesProvider.provider_name);
             return GetImages(seriesId, cancellationToken);
         }
 
@@ -144,7 +148,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
 
             if (!string.IsNullOrEmpty(aid))
             {
-                var primary =  _api.Get_ImageUrl(await _api.WebRequestAPI(_api.AniList_anime_link.Replace("{0}", aid)));
+                var primary = await _api.Get_ImageUrlAsync(await _api.WebRequestAPI(_api.anime_link + aid, cancellationToken));
                 list.Add(new RemoteImageInfo
                 {
                     ProviderName = Name,
@@ -161,7 +165,7 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniList
             {
                 CancellationToken = cancellationToken,
                 Url = url,
-                ResourcePool = AniListSeriesProvider.ResourcePool
+                ResourcePool = MyAnimeListSeriesProvider.ResourcePool
             });
         }
     }

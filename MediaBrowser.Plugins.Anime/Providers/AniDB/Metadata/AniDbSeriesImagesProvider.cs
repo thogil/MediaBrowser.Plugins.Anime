@@ -1,16 +1,16 @@
-﻿using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Xml;
-using MediaBrowser.Common.Configuration;
+﻿using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Providers;
+using System.Collections.Generic;
+using System.IO;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Xml;
 
 namespace MediaBrowser.Plugins.Anime.Providers.AniDB.Metadata
 {
@@ -34,11 +34,10 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB.Metadata
                 CancellationToken = cancellationToken,
                 Url = url,
                 ResourcePool = AniDbSeriesProvider.ResourcePool
-
             }).ConfigureAwait(false);
         }
 
-        public Task<IEnumerable<RemoteImageInfo>> GetImages(IHasImages item, CancellationToken cancellationToken)
+        public Task<IEnumerable<RemoteImageInfo>> GetImages(BaseItem item, CancellationToken cancellationToken)
         {
             var series = (Series)item;
             var seriesId = series.GetProviderId(ProviderNames.AniDb);
@@ -67,14 +66,14 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB.Metadata
             return list;
         }
 
-        public IEnumerable<ImageType> GetSupportedImages(IHasImages item)
+        public IEnumerable<ImageType> GetSupportedImages(BaseItem item)
         {
             return new[] { ImageType.Primary };
         }
 
         public string Name => "AniDB";
 
-        public bool Supports(IHasImages item)
+        public bool Supports(BaseItem item)
         {
             return item is Series;
         }

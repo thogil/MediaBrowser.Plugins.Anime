@@ -1,35 +1,23 @@
-﻿using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using MediaBrowser.Common.Configuration;
+﻿using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
-using MediaBrowser.Controller.Library;
-using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Logging;
+using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 using MediaBrowser.Plugins.Anime.Configuration;
-using MediaBrowser.Plugins.Anime.Providers.AniDB.Converter;
 using MediaBrowser.Plugins.Anime.Providers.AniDB.Identity;
+using System;
+using System.Collections.Generic;
 
 namespace MediaBrowser.Plugins.Anime
 {
     public class Plugin
-        : BasePlugin<PluginConfiguration>
+        : BasePlugin<PluginConfiguration>, IHasWebPages
     {
-        private readonly IApplicationPaths _applicationPaths;
-
         public Plugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, ILogger logger) : base(applicationPaths, xmlSerializer)
         {
-            _applicationPaths = applicationPaths;
-
             Instance = this;
-            PluginConfiguration.Instance = () => Configuration;
-
-            PerformMigrations();
 
             AniDbTitleMatcher.DefaultInstance = new AniDbTitleMatcher(logger, new AniDbTitleDownloader(logger, applicationPaths));
-            AnidbConverter.DefaultInstance = new AnidbConverter(applicationPaths);
         }
 
         public override string Name
@@ -39,98 +27,23 @@ namespace MediaBrowser.Plugins.Anime
 
         public static Plugin Instance { get; private set; }
 
-        private void PerformMigrations()
+        public IEnumerable<PluginPageInfo> GetPages()
         {
-            var previousVersion = ReadSavedVersion();
-            var currentVersion = Version.Parse(GitVersionInformation.AssemblySemVer);
-            
-            try
+            return new[]
             {
-                if (previousVersion == null)
-                    InitialSetup(currentVersion);
-                else
-                    Migrate(previousVersion, currentVersion);
-            }
-            finally
-            {
-                var path = Path.Combine(_applicationPaths.CachePath, "anime", "version.txt");
-                var dir = Path.GetDirectoryName(path);
-                Directory.CreateDirectory(dir);
-                File.WriteAllText(path, currentVersion.ToString());
-            }
-        }
-
-        private void Migrate(Version previousVersion, Version currentVersion)
-        {
-        }
-
-        private void InitialSetup(Version currentVersion)
-        {
-            // pre-2.0.0 had no version checks, and so upgrades to 2.0.0+ will be detected as needing initial setup
-            // default to UseAnidbOrderingWithSeasons = true if there was a previous install, to emulate pre-2.0.0 behaviour 
-            if (Directory.Exists(Path.Combine(_applicationPaths.CachePath, "anidb")))
-            {
-                Configuration.UseAnidbOrderingWithSeasons = true;
-                SaveConfiguration();
-            }
-
-            // force refresh on new installs
-            SetForceRefreshFlag();
-        }
-
-        private Version ReadSavedVersion()
-        {
-            var path = Path.Combine(_applicationPaths.CachePath, "anime", "version.txt");
-            if (!File.Exists(path))
-                return null;
-
-            try
-            {
-                var version = File.ReadAllText(path);
-                return Version.Parse(version);
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        public void SetForceRefreshFlag()
-        {
-            try
-            {
-                using (File.Create(ForceRefreshFlagPath))
+                new PluginPageInfo
                 {
+                    Name = "anime",
+                    EmbeddedResourcePath = "MediaBrowser.Plugins.Anime.Configuration.configPage.html"
                 }
-            }
-            catch { }
+            };
         }
 
-        public void ClearForceRefreshFlag()
+        private Guid _id = new Guid("1d0dddf7-1877-4473-8d7b-03f7dac1e559");
+
+        public override Guid Id
         {
-            try
-            {
-                File.Delete(ForceRefreshFlagPath);
-            }
-            catch { }
+            get { return _id; }
         }
-
-        public bool CheckForceRefreshFlag()
-        {
-            return File.Exists(ForceRefreshFlagPath);
-        }
-
-        private string ForceRefreshFlagPath => Path.Combine(_applicationPaths.CachePath, "anime", ".forcerefresh");
-    }
-
-    public class ClearRefreshFlagPostScanTask : ILibraryPostScanTask, IHasOrder
-    {
-        public Task Run(IProgress<double> progress, CancellationToken cancellationToken)
-        {
-            Plugin.Instance.ClearForceRefreshFlag();
-            return Task.FromResult<object>(null);
-        }
-
-        public int Order => int.MaxValue;
     }
 }

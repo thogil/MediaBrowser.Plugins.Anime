@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using MediaBrowser.Common.Configuration;
+﻿using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Net;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Providers;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace MediaBrowser.Plugins.Anime.Providers.AniDB.Metadata
 {
@@ -46,7 +46,6 @@ namespace MediaBrowser.Plugins.Anime.Providers.AniDB.Metadata
                 result.Item.PremiereDate = seriesResult.Item.PremiereDate;
                 result.Item.EndDate = seriesResult.Item.EndDate;
                 result.Item.CommunityRating = seriesResult.Item.CommunityRating;
-                result.Item.VoteCount = seriesResult.Item.VoteCount;
                 result.Item.Studios = seriesResult.Item.Studios;
                 result.Item.Genres = seriesResult.Item.Genres;
             }
